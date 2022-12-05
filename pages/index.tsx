@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Head from 'next/head'
 import Image from 'next/image'
 import Button from "../components/Button";
 import { Image as ImageJS } from "image-js";
 import cx from "classnames"
-import greece from '../public/greece.jpg'
+import greece from '../public/london.jpg'
 import type { Chuck } from "webchuck";
 
 // TODO: Direction
@@ -20,7 +20,7 @@ enum Direction {
 
 function useImage() {
   const [img, setImg] = useState<ImageJS | null>(null);
-  const hasLoadedImg = img === null;
+  const hasLoadedImg = img !== null;
   useEffect(() => {
     const x = async () => {
       const img = await ImageJS.load("../greece.jpg");
@@ -38,66 +38,125 @@ function useChuck() {
   const hasChuck = chuck !== null;
   useEffect(() => {
     const loadChuck = async () => {
-      if (hasChuck) return;
+      console.log(1);
       const Chuck = (await import('webchuck')).Chuck;
       const chuck = await Chuck.init([]);
       setChuck(chuck);
     }
     loadChuck();
-  }, [hasChuck, setChuck]);
+  }, []);
   return chuck;
 }
 
+// TODO: vertical scan
+// TODO: speed slider
+// TODO: "upload photo or choose one of these"
+// TODO: ChucK editor
+// TODO: deployment
+// TODO: publish NPM package
+// TODO: presentation
+// TODO: favicon
+// TODO: react package
 export default function Home() {
-  const chuck = useChuck();
+  // const chuck = useChuck();
   const img = useImage();
-  console.log(img);
-
-  const play = () => {
-    if (!chuck) return;
-    console.log(chuck);
-    if (chuck.context.state === "suspended") {
-      // @ts-ignore
-      chuck.context.resume();
-    }
-    const x = chuck.runCode(
-      `
-      SinOsc sin => dac;
-      sin.freq(220);
-      5000::ms => now;
-      `
-    );
-  };
 
   const speed = 2000; // ms to run scan
   const interval = 10; // ms to create new window
 
-  const [isScanning, setIsScanning] = useState(false);
+  const [scanPx, setScanPx] = useState<number | null>(45);
+  const barRef = useRef<HTMLDivElement>(null);
 
   const analyze = async () => {
-    if (img === null) return;
-    setIsScanning(true);
+    const Chuck = (await import('webchuck')).Chuck;
+    const chuck = await Chuck.init([]);
+    if (!img) return;
+    if (chuck.context.state === "suspended") {
+      // @ts-ignore
+      chuck.context.resume();
+    }
+    chuck.runCode(
+      `
+      global float medianBlue;
+      Step unity => Envelope freqEnv => blackhole;
+
+      SinOsc sin => dac;
+      sin.freq(200);
+
+      fun void updateFromVars() {
+        while (true) {
+          Std.mtof(medianBlue / 2) => float freq;
+          freqEnv.target(freq);
+          sin.freq(freq);
+          10::ms => now;
+        }
+      }
+
+      spork ~updateFromVars();
+
+      5000::ms => now;
+      `
+    );
+
     const { width, height } = img;
     const cropWidth = (interval / speed) * width;
     console.log(width);
 
     let intervalID: ReturnType<typeof setInterval>
     let x = 0
+    let reverse = false
     const run = () => {
       if (x + cropWidth >= width) {
-        clearInterval(intervalID);
-        setIsScanning(false);
+        reverse = true
+        if (barRef.current) barRef.current.style.clipPath = "inset(0 0 0 60px)"
+      }
+      if (x - cropWidth <= 0) {
+        reverse = false
+        if (barRef.current) barRef.current.style.clipPath = "inset(0 0 0 -60px)"
+      }
+
+      const left = reverse ? x - cropWidth : x + cropWidth;
+      const leftPct = (left / width) * 100;
+
+      if (barRef.current) {
+        barRef.current.style.left = `${leftPct}%`;
+      }
+
+      // setScanPx(((x + cropWidth) / width) * 100);
+      const cropped = img.crop({
+        x: reverse ? x - cropWidth : x,
+        width: cropWidth
+      });
+      const max = cropped.getMax();
+      const min = cropped.getMin();
+      const sum = cropped.getSum();
+      const grey = cropped.grey();
+      const mean = cropped.getMean();
+      const median = cropped.getMedian();
+      /*(
+      console.log({
+        cropped,
+        max,
+        min,
+        sum,
+        grey,
+        mean,
+        median
+      });
+      */
+      // console.log(mean[2]);
+      chuck.setFloat("medianBlue", median[2]);
+      if (reverse) {
+        x -= cropWidth;
       } else {
-        const cropped = img.crop({ x, width: cropWidth });
-        const mean = cropped.getMean();
-        const median = cropped.getMedian();
-        // console.log(mean[2]);
-        console.log(median[0]);
         x += cropWidth;
       }
     }
+
     intervalID = setInterval(run, interval)
   }
+
+  console.log(scanPx);
 
   return (
     <div className="h-full w-full bg-slate-50 p-4">
@@ -115,17 +174,18 @@ export default function Home() {
         />
         <div className="h-full w-full overflow-hidden rounded">
           <div
+            ref={barRef}
             className={cx(
-              "scanning-bar absolute top-0 left-0 bottom-0 w-2 bg-[rgb(255,255,255,.8)]",
+              "scanning-bar absolute top-0 bottom-0 w-0 bg-[rgb(255,255,255,.8)]",
               {
-                "hidden": !isScanning,
-                "visible animate-[scan_2s_linear_infinite]": isScanning,
+                // "hidden": !scanPx && false,
+                // "visible animate-[left_2s_linear]": scanPx || true,
               }
             )}
           />
         </div>
       </div>
-      <Button onClick={play}>
+      <Button onClick={analyze}>
         describe
       </Button>
     </div>

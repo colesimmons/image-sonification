@@ -40,8 +40,11 @@ a {
 }
 
 @keyframes scan {
-  to {
-    transform: translateX(-100%);
-    left: 100%;
+  0% {
+    clip-path: inset(0 0 0 -60px);
+  }
+
+  100% {
+    clip-path: inset(0 0 0 60px);
   }
 }
