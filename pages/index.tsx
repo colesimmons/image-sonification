@@ -4,7 +4,7 @@ import Image, { StaticImageData } from 'next/image'
 import ImageSonifier from "../components/ImageSonifier";
 import SelectImage from "../components/SelectImage";
 import type { Photo } from "../types";
-// import greece from '../public/london.jpg'
+import greece from "../public/greece.jpg"
 
 enum Direction {
   ltr = "left-to-right",
@@ -14,7 +14,6 @@ enum Direction {
 }
 
 // TODO: vertical scan
-// TODO: speed slider
 // TODO: ChucK editor
 // TODO: deployment
 // TODO: publish NPM package
@@ -22,8 +21,9 @@ enum Direction {
 // TODO: favicon
 // TODO: react package
 // TODO: start -> stop button
+// TODO: submission to factory
 export default function Home() {
-  const [photo, setPhoto] = useState<Photo>(null);
+  const [photo, setPhoto] = useState<Photo>(greece); // TODO
 
   return (
     <div className="h-full w-full bg-slate-50 p-4">
