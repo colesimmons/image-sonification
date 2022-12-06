@@ -102,6 +102,7 @@ export default function ImageSonifier({
 
   const editor = useRef(null);
   const handleReady = () => {
+    // @ts-ignore
     const newEditor = window.ace.edit("liveCodeEditor");
     newEditor.setTheme("ace/theme/chuck");
     newEditor.session.setMode("ace/mode/chuck");
@@ -128,6 +129,7 @@ export default function ImageSonifier({
       // @ts-ignore
       chuck.context.resume();
     }
+    // @ts-ignore
     const code = editor.current?.getValue();
     chuck.runCode(code);
 
