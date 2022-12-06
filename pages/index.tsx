@@ -6,14 +6,6 @@ import SelectImage from "../components/SelectImage";
 import type { Photo } from "../types";
 import greece from "../public/greece.jpg"
 
-enum Direction {
-  ltr = "left-to-right",
-  rtl = "right-to-left",
-  ttb = "top-to-bottom",
-  btt = "bottom-to-top",
-}
-
-// TODO: vertical scan
 // TODO: ChucK editor
 // TODO: deployment
 // TODO: publish NPM package
