@@ -20,7 +20,6 @@ enum Direction {
 // TODO: presentation
 // TODO: favicon
 // TODO: react package
-// TODO: start -> stop button
 // TODO: submission to factory
 export default function Home() {
   const [photo, setPhoto] = useState<Photo>(greece); // TODO

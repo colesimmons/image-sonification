@@ -2,7 +2,7 @@ export default function Button({
   children,
   onClick,
 }: {
-  children: string,
+  children: JSX.Element,
   onClick: () => void,
 }) {
   return (

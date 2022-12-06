@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Head from 'next/head'
 import Image from 'next/image'
 import cx from "classnames"
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { PlayIcon, StopIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import type { Photo } from "../types";
 import { useChuck, useImage } from "../utils/hooks";
 import Button from "./Button";
@@ -19,12 +19,12 @@ export default function ImageSonifier({
   const chuck = useChuck();
   const img = useImage(photo);
 
+  const [isRunning, setIsRunning] = useState(false);
   const [speed, setSpeed] = useState(1450); // 5000-this = ms per scan
+  const barRef = useRef<HTMLDivElement>(null);
+  const intervalID = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const interval = 10; // ms to create new window
-
-  const [scanPx, setScanPx] = useState<number | null>(45);
-  const barRef = useRef<HTMLDivElement>(null);
 
   const start = async () => {
     if (!img || !chuck) return;
@@ -66,6 +66,9 @@ export default function ImageSonifier({
       if (barRef.current) {
         const leftPct = ((x + halfWindow) / width) * 100;
         barRef.current.style.left = `${leftPct}%`;
+        if (barRef.current.style.opacity === "0") {
+          barRef.current.style.opacity = "100";
+        }
       }
 
       const cropped = img.crop({
@@ -108,8 +111,23 @@ export default function ImageSonifier({
       }
     }
 
+    setIsRunning(true);
     run();
-    setInterval(run, interval);
+    intervalID.current = setInterval(run, interval);
+  }
+
+  const stop = async () => {
+    setIsRunning(false);
+    if (intervalID.current) {
+      clearInterval(intervalID.current);
+    }
+    if (chuck) {
+      await chuck.removeLastCode();
+    }
+    if (barRef.current) {
+      barRef.current.style.opacity = "0";
+      barRef.current.style.clipPath = "inset(0 0 0 -60px)";
+    }
   }
 
   return (
@@ -130,7 +148,7 @@ export default function ImageSonifier({
         <div className="h-full w-full overflow-hidden rounded">
           <button
             type="button"
-            className="p-1 shadow-lg absolute -top-3 -right-3 rounded-full bg-white text-slate-400 text-slate-800 focus:outline-none ring-1 ring-slate-500 focus:ring-indigo-500 focus:ring-offset-2"
+            className="p-1 shadow absolute -top-3 -right-3 rounded-full bg-slate-800 text-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-2"
             onClick={() => setPhoto(null)}
           >
             <span className="sr-only">New Photo</span>
@@ -151,11 +169,23 @@ export default function ImageSonifier({
       <Slider
         speed={speed}
         setSpeed={setSpeed}
-        isDisabled
+        isDisabled={isRunning}
       />
-      <Button onClick={start}>
-        describe
-      </Button>
+      {isRunning ? (
+        <Button onClick={stop}>
+          <>
+            <StopIcon className="h-3 w-3 stroke-2 mr-2" />
+            Stop
+          </>
+        </Button>
+      ) : (
+        <Button onClick={start}>
+          <>
+            <PlayIcon className="h-3 w-3 stroke-2 mr-2" />
+            Start
+          </>
+        </Button>
+      )}
     </div>
   )
 }
