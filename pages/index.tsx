@@ -18,7 +18,6 @@ enum Direction {
 // TODO: deployment
 // TODO: publish NPM package
 // TODO: presentation
-// TODO: favicon
 // TODO: react package
 // TODO: submission to factory
 export default function Home() {
