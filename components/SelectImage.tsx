@@ -114,7 +114,7 @@ export default function SelectImage({
   return (
     <div className="text-slate-900">
       <h1 className="font-bold text-3xl">
-        Image Sonifier
+        image sonifier
       </h1>
       <p>
         Upload a photo, or select one from the samples below.

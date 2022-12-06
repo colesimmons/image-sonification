@@ -14,24 +14,64 @@ import Slider from "./Slider";
 import DirectionDropdown, { Direction } from "./DirectionDropdown";
 
 function setVars(cropped: ImageJS, chuck: Chuck) {
-  const max = cropped.getMax();
+  // RGB
   const min = cropped.getMin();
-  const sum = cropped.getSum();
-  const grey = cropped.grey();
-  const mean = cropped.getMean();
+  chuck.setFloat("minRed", min[0]);
+  chuck.setFloat("minGreen", min[1]);
+  chuck.setFloat("minBlue", min[2]);
+
+  const max = cropped.getMax();
+  chuck.setFloat("maxRed", max[0]);
+  chuck.setFloat("maxGreen", max[1]);
+  chuck.setFloat("maxBlue", max[2]);
+
   const median = cropped.getMedian();
-  chuck.setFloat("medianBlue", median[0]);
-  /*(
-    console.log({
-    cropped,
-    max,
-    min,
-    sum,
-    grey,
-    mean,
-    median
-    });
-   */
+  chuck.setFloat("medianRed", median[0]);
+  chuck.setFloat("medianGreen", median[1]);
+  chuck.setFloat("medianBlue", median[2]);
+
+  const mean = cropped.getMean();
+  chuck.setFloat("meanRed", mean[0]);
+  chuck.setFloat("meanGreen", mean[1]);
+  chuck.setFloat("meanBlue", mean[2]);
+
+  // Greyscale
+  const grey = cropped.grey();
+
+  const minGrey = grey.getMin();
+  chuck.setFloat("minGrey", minGrey[0]);
+
+  const maxGrey = grey.getMax();
+  chuck.setFloat("maxGrey", maxGrey[0]);
+
+  const medianGrey = grey.getMedian();
+  chuck.setFloat("medianGrey", medianGrey[0]);
+
+  const meanGrey = grey.getMean();
+  chuck.setFloat("meanGrey", meanGrey[0]);
+
+  // HSL
+  const hsl = cropped.hsl();
+
+  const minHSL = hsl.getMin();
+  chuck.setFloat("minHue", minHSL[0]);
+  chuck.setFloat("minSaturation", minHSL[1]);
+  chuck.setFloat("minLightness", minHSL[2]);
+
+  const maxHSL = hsl.getMax();
+  chuck.setFloat("maxHue", maxHSL[0]);
+  chuck.setFloat("maxSaturation", maxHSL[1]);
+  chuck.setFloat("maxLightness", maxHSL[2]);
+
+  const medianHSL = hsl.getMedian();
+  chuck.setFloat("medianHSL", medianHSL[0]);
+  chuck.setFloat("medianSaturation", medianHSL[1]);
+  chuck.setFloat("medianLightness", medianHSL[2]);
+
+  const meanHSL = hsl.getMean();
+  chuck.setFloat("meanHSL", meanHSL[0]);
+  chuck.setFloat("meanSaturation", meanHSL[1]);
+  chuck.setFloat("meanLightness", meanHSL[2]);
 }
 
 enum ClipPath {
@@ -88,30 +128,9 @@ export default function ImageSonifier({
       // @ts-ignore
       chuck.context.resume();
     }
-    chuck.runCode(
-      `
-      global float medianBlue;
-      Step unity => Envelope freqEnv => blackhole;
+    const code = editor.current?.getValue();
+    chuck.runCode(code);
 
-      SinOsc sin => dac;
-      sin.freq(200);
-
-      fun void updateFromVars() {
-        while (true) {
-          Std.mtof(medianBlue / 2) => float freq;
-          freqEnv.target(freq);
-          sin.freq(freq);
-          10::ms => now;
-        }
-      }
-
-      spork ~updateFromVars();
-
-      1::week => now;
-      `
-    );
-
-    console.log(editor.current.getValue());
     const { width, height } = img;
     const windowRatio = (interval / (5000 - speed));
     const windowWidth = windowRatio * width;
@@ -299,11 +318,97 @@ export default function ImageSonifier({
           )}
         </div>
       </div>
-      <div
-        id="liveCodeEditor"
-        className="h-[500px] mt-4 border-2 border-slate-100 rounded-md shadow ace_editor ace_hidpi ace-chuck"
-      >
-        global float mouseX, mouseY, panVal;
+      <div className="bg-white border-2 border-slate-200 rounded-md shadow-lg overflow-auto">
+        <div
+          id="liveCodeEditor"
+          className="ace_editor ace_hidpi ace-chuck"
+        >
+{
+`// min, max, median, and mean RGB values in the sliding window (0-255)
+global float minRed, minGreen, minBlue;
+global float maxRed, maxGreen, maxBlue;
+global float medianRed, medianGreen, medianBlue;
+global float meanRed, meanGreen, meanBlue;
+
+// min, max, median, and mean grey values for a greyscale version of the image (0-255)
+global float minGrey, maxGrey, medianGrey, meanGrey;
+
+// min, max, median, and mean HSL values (0-255)
+global float minHue, minSaturation, minLightness;
+global float maxHue, maxSaturation, maxLightness;
+global float medianHue, medianSaturation, medianLightness;
+global float meanHue, meanSaturation, meanLightness;
+
+// Pseudo 808 kick synthesis
+SinOsc osc => ADSR oscEnv => Gain output;
+Noise noise => BPF noiseFilter => ADSR noiseEnv => output;
+Envelope freqEnv => blackhole;
+
+400 => noiseFilter.freq;
+15 => noiseFilter.Q;
+
+oscEnv.set(1::ms, 400::ms, 0.0, 0::ms);
+noiseEnv.set(1::ms, 50::ms, 0.0, 0::ms);
+
+output => dac;
+
+// Play kick
+100 => float startFreq;
+1::ms => dur riseTime;
+55 => float endFreq;
+100::ms => dur dropTime;
+
+function void kick() {
+    oscEnv.keyOn();
+    noiseEnv.keyOn();
+
+    Math.random2(350, 450) => noiseFilter.freq;
+    Math.random2(10, 15) => noiseFilter.Q;
+
+    startFreq => freqEnv.target;
+    riseTime => freqEnv.duration;
+    riseTime => now;
+
+    endFreq => freqEnv.target;
+    dropTime => freqEnv.duration;
+    dropTime => now;
+}
+
+SinOsc sin => dac;
+130 => int bpm;
+60.0 / bpm => float step;
+
+fun void updateFromVars() {
+  while (true) {
+    Std.mtof(medianSaturation / 3) => float freq;
+    sin.freq(freq);
+    (step/2)::second => now;
+  }
+}
+
+
+fun void playKick() {
+    while (true) {
+        spork ~kick();
+        step::second => now;
+    }
+}
+function void processEnvelopes() {
+    while (true) {
+        freqEnv.value() => osc.freq;
+        1::samp => now;
+    }
+}
+
+spork ~ processEnvelopes();
+
+spork ~updateFromVars();
+spork ~playKick();
+
+1::week => now;
+`
+}
+        </div>
       </div>
       <Script
         src="https://ccrma.stanford.edu/~cc/220a/webchuck220aFinal/js/ace.js"

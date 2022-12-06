@@ -22,7 +22,7 @@ export default function Home() {
   return (
     <div className="h-full w-full bg-slate-50 p-4">
       <Head>
-        <title>Image Sonifier</title>
+        <title>image sonifier</title>
         <meta name="description" content="music has never looked so good" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
