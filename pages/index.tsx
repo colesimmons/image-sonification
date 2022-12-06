@@ -7,15 +7,9 @@ import type { Photo } from "../types";
 import { useChuck } from "../utils/hooks";
 import greece from "../public/greece.jpg"
 
-// TODO: ChucK editor
-// TODO: deployment
-// TODO: publish NPM package
-// TODO: presentation
-// TODO: react package
 // TODO: submission to factory
-// TODO: undo default pic
 export default function Home() {
-  const [photo, setPhoto] = useState<Photo>(greece); // TODO
+  const [photo, setPhoto] = useState<Photo>(null);
   const ace = useRef(null);
   const chuck = useChuck();
 
