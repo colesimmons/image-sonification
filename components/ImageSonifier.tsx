@@ -93,7 +93,7 @@ export default function ImageSonifier({
       });
       */
       // console.log(mean[2]);
-      chuck.setFloat("medianBlue", median[2]);
+      chuck.setFloat("medianBlue", median[0]);
 
       if (!reverse && x + (2 * windowWidth) >= width) {
         reverse = true
@@ -130,6 +130,11 @@ export default function ImageSonifier({
     }
   }
 
+  const close = () => {
+    setPhoto(null);
+    stop();
+  }
+
   return (
     <div className="relative m-auto flex flex-col items-center space-y-4 w-96">
       <div className="relative">
@@ -149,7 +154,7 @@ export default function ImageSonifier({
           <button
             type="button"
             className="p-1 shadow absolute -top-3 -right-3 rounded-full bg-slate-800 text-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-2"
-            onClick={() => setPhoto(null)}
+            onClick={close}
           >
             <span className="sr-only">New Photo</span>
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />

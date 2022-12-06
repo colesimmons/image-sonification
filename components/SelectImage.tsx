@@ -20,6 +20,7 @@ function DragAndDropUpload({
 
   const handleFiles = async (files: FileList) => {
     const photo = files[0];
+    if (!photo) return
     const buffer = await photo.arrayBuffer();
     setPhoto(buffer);
   }
@@ -77,7 +78,7 @@ function DragAndDropUpload({
         <div className="flex text-sm text-slate-600">
           <label
             htmlFor="file-upload"
-            className="relative cursor-pointer rounded-md bg-white font-medium text-indigo-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:text-indigo-500"
+            className="relative cursor-pointer rounded-md font-medium text-indigo-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:text-indigo-500"
           >
             <span>Upload a file</span>
             <input
@@ -90,7 +91,7 @@ function DragAndDropUpload({
           </label>
           <p className="pl-1">or drag and drop</p>
         </div>
-        <p className="text-xs text-slate-500">PNG or JPG up to 10MB</p>
+        <p className="text-xs text-slate-500">PNG or JPG up to 10MB (local system only)</p>
       </div>
     </div>
   );
