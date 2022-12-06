@@ -38,13 +38,3 @@ a {
   box-shadow: 0 0 40px 20px rgb(255, 255, 255, .8);
   clip-path: inset(0 0 0 -60px);
 }
-
-@keyframes scan {
-  0% {
-    clip-path: inset(0 0 0 -60px);
-  }
-
-  100% {
-    clip-path: inset(0 0 0 60px);
-  }
-}
