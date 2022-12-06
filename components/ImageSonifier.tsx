@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import Head from 'next/head'
 import Image from 'next/image'
+import Script from 'next/script'
 import cx from "classnames"
 import { Image as ImageJS } from "image-js";
-import { PlayIcon, StopIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { PlayIcon, StopIcon, SpeakerWaveIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import type { Chuck } from "webchuck";
-
 import type { Photo } from "../types";
 import { useChuck, useImage } from "../utils/hooks";
 import Button from "./Button";
@@ -42,13 +42,14 @@ enum ClipPath {
 }
 
 export default function ImageSonifier({
+  chuck,
   photo,
   setPhoto,
 }: {
+  chuck: Chuck | null,
   photo: Photo,
   setPhoto: (photo: Photo) => void,
 }) {
-  const chuck = useChuck();
   const img = useImage(photo);
 
   const [isRunning, setIsRunning] = useState(false);
@@ -58,6 +59,28 @@ export default function ImageSonifier({
   const intervalID = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const interval = 10; // ms to create new window
+
+  const editor = useRef(null);
+  const handleReady = () => {
+    const newEditor = window.ace.edit("liveCodeEditor");
+    newEditor.setTheme("ace/theme/chuck");
+    newEditor.session.setMode("ace/mode/chuck");
+    newEditor.setOptions({
+      fontSize: "13px",
+      fontFamily: "Monaco",
+      cursorStyle: "ace",
+      useSoftTabs: true,
+      showFoldWidgets: true,
+      foldStyle: "markbeginend",
+      maxLines: 50,
+      minLines: 5,
+    });
+    newEditor.container.style.lineHeight = 1.25;
+    newEditor.renderer.updateFontSize();
+    newEditor.session.setUseWrapMode(true);
+    newEditor.setReadOnly(false);
+    editor.current = newEditor;
+  }
 
   const start = async () => {
     if (!img || !chuck) return;
@@ -88,6 +111,7 @@ export default function ImageSonifier({
       `
     );
 
+    console.log(editor.current.getValue());
     const { width, height } = img;
     const windowRatio = (interval / (5000 - speed));
     const windowWidth = windowRatio * width;
@@ -214,59 +238,77 @@ export default function ImageSonifier({
   }
 
   return (
-    <div className="relative m-auto flex flex-col items-center space-y-4 w-96">
-      <div className="relative">
-        {photo instanceof ArrayBuffer && img ? (
-          <UserPhoto img={img} />
-        ) : null}
-        {photo !== null && !(photo instanceof ArrayBuffer) ? (
-          <Image
-            src={photo}
-            alt="Photo"
-            className="rounded shadow-2xl w-80"
-            width={400}
-            height={400}
+    <div className="relative m-auto flex flex-col space-y-4 w-full h-full">
+      <h2 className="text-slate-800 flex items-center font-black">
+        <SpeakerWaveIcon className="h-5 w-5 stroke-2 mr-2" />
+        image sonifier
+      </h2>
+      <div className="grid grid-cols-[1fr_200px] w-full gap-x-4">
+        <div className="relative">
+          {photo instanceof ArrayBuffer && img ? (
+            <UserPhoto img={img} />
+          ) : null}
+          {photo !== null && !(photo instanceof ArrayBuffer) ? (
+            <Image
+              src={photo}
+              alt="Photo"
+              className="rounded shadow-2xl w-full"
+              width={400}
+              height={400}
+            />
+          ) : null}
+          <div className="h-full w-full overflow-hidden rounded">
+            <button
+              type="button"
+              className="p-1 shadow absolute z-20 -top-3 -right-3 rounded-full bg-slate-800 text-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-2"
+              onClick={close}
+            >
+              <span className="sr-only">New Photo</span>
+              <XMarkIcon className="h-4 w-4 text-white" aria-hidden="true" />
+            </button>
+            <div
+              ref={barRef}
+              className="scanning-bar absolute bg-[rgb(255,255,255,.8)]"
+            />
+          </div>
+        </div>
+        <div className="flex flex-col justify-center items-center space-y-8">
+          <Slider
+            speed={speed}
+            setSpeed={setSpeed}
+            isDisabled={isRunning}
           />
-        ) : null}
-        <div className="h-full w-full overflow-hidden rounded">
-          <button
-            type="button"
-            className="p-1 shadow absolute z-20 -top-3 -right-3 rounded-full bg-slate-800 text-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-2"
-            onClick={close}
-          >
-            <span className="sr-only">New Photo</span>
-            <XMarkIcon className="h-4 w-4" aria-hidden="true" />
-          </button>
-          <div
-            ref={barRef}
-            className="scanning-bar absolute bg-[rgb(255,255,255,.8)]"
+          <DirectionDropdown
+            value={direction}
+            setValue={setDirection}
           />
+          {isRunning ? (
+            <Button onClick={stop}>
+              <>
+                <StopIcon className="h-3 w-3 stroke-2 mr-2" />
+                Stop
+              </>
+            </Button>
+          ) : (
+            <Button onClick={start}>
+              <>
+                <PlayIcon className="h-3 w-3 stroke-2 mr-2" />
+                Start
+              </>
+            </Button>
+          )}
         </div>
       </div>
-      <Slider
-        speed={speed}
-        setSpeed={setSpeed}
-        isDisabled={isRunning}
+      <div
+        id="liveCodeEditor"
+        className="h-[500px] mt-4 border-2 border-slate-100 rounded-md shadow ace_editor ace_hidpi ace-chuck"
+      >
+        global float mouseX, mouseY, panVal;
+      </div>
+      <Script
+        src="https://ccrma.stanford.edu/~cc/220a/webchuck220aFinal/js/ace.js"
+        onReady={handleReady}
       />
-      <DirectionDropdown
-        value={direction}
-        setValue={setDirection}
-      />
-      {isRunning ? (
-        <Button onClick={stop}>
-          <>
-            <StopIcon className="h-3 w-3 stroke-2 mr-2" />
-            Stop
-          </>
-        </Button>
-      ) : (
-        <Button onClick={start}>
-          <>
-            <PlayIcon className="h-3 w-3 stroke-2 mr-2" />
-            Start
-          </>
-        </Button>
-      )}
     </div>
   )
 }
