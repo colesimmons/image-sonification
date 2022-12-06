@@ -166,14 +166,15 @@ export default function ImageSonifier({
         localDirection === Direction.rtl
       ) {
         if (barRef.current) {
-          const leftPct = ((x + halfWindowWidth) / width) * 100;
+          const leftPct = ((x + halfWindowWidth) / width);
           barRef.current.style.top = "0px";
           barRef.current.style.bottom = "0px";
-          barRef.current.style.left = `${leftPct}%`;
+          barRef.current.style.left = `${leftPct * 100}%`;
           barRef.current.style.right = "unset";
           if (barRef.current.style.opacity === "0") {
             barRef.current.style.opacity = "100";
           }
+          chuck.setFloat("sweep", leftPct);
         }
 
         const cropped = img.crop({ x, width: windowWidth });
@@ -202,8 +203,8 @@ export default function ImageSonifier({
         localDirection === Direction.ttb
       ) {
         if (barRef.current) {
-          const topPct = ((y + halfWindowHeight) / height) * 100;
-          barRef.current.style.top = `${topPct}%`;
+          const topPct = ((y + halfWindowHeight) / height);
+          barRef.current.style.top = `${topPct * 100}%`;
           barRef.current.style.left = "0px";
           barRef.current.style.right = "0px";
           barRef.current.style.bottom = "unset";
@@ -211,6 +212,7 @@ export default function ImageSonifier({
           if (barRef.current.style.opacity === "0") {
             barRef.current.style.opacity = "100";
           }
+          chuck.setFloat("sweep", topPct);
         }
 
         const cropped = img.crop({ y, height: windowHeight });
@@ -259,7 +261,7 @@ export default function ImageSonifier({
   }
 
   return (
-    <div className="relative m-auto flex flex-col space-y-4 w-full h-full">
+    <div className="relative m-auto grid grid-rows-[auto_auto_1fr] space-y-4 w-full h-full">
       <h2 className="text-slate-800 flex items-center font-black">
         <SpeakerWaveIcon className="h-5 w-5 stroke-2 mr-2" />
         image sonifier
@@ -320,13 +322,14 @@ export default function ImageSonifier({
           )}
         </div>
       </div>
-      <div className="bg-white border-2 border-slate-200 rounded-md shadow-lg overflow-auto">
+      <div className="h-[813px] bg-white border-2 border-slate-200 rounded-md shadow-lg">
         <div
           id="liveCodeEditor"
           className="ace_editor ace_hidpi ace-chuck"
         >
 {
-`// min, max, median, and mean RGB values in the sliding window (0-255)
+`/* GLOBALS */
+// min, max, median, and mean RGB values in the sliding window (0-255)
 global float minRed, minGreen, minBlue;
 global float maxRed, maxGreen, maxBlue;
 global float medianRed, medianGreen, medianBlue;
@@ -341,71 +344,168 @@ global float maxHue, maxSaturation, maxLightness;
 global float medianHue, medianSaturation, medianLightness;
 global float meanHue, meanSaturation, meanLightness;
 
-// Pseudo 808 kick synthesis
-SinOsc osc => ADSR oscEnv => Gain output;
-Noise noise => BPF noiseFilter => ADSR noiseEnv => output;
-Envelope freqEnv => blackhole;
+// position of bar from left or top, depending on direction [0-1]
+global float sweep;
 
-400 => noiseFilter.freq;
-15 => noiseFilter.Q;
+/* ----------------------*/
+/* YOUR CODE BELOW */
+/* ----------------------*/
 
-oscEnv.set(1::ms, 400::ms, 0.0, 0::ms);
-noiseEnv.set(1::ms, 50::ms, 0.0, 0::ms);
+[
+33, 45, 57, 69, 81, // A
+36, 48, 60, 72, 84, // C
+38, 50, 62, 74, 86, // D
+40, 52, 64, 76, 88, // E
+43, 55, 67, 79, 91 // G
+] @=> int aMinorPentatonic[];
 
-output => dac;
-
-// Play kick
-100 => float startFreq;
-1::ms => dur riseTime;
-55 => float endFreq;
-100::ms => dur dropTime;
-
-function void kick() {
-    oscEnv.keyOn();
-    noiseEnv.keyOn();
-
-    Math.random2(350, 450) => noiseFilter.freq;
-    Math.random2(10, 15) => noiseFilter.Q;
-
-    startFreq => freqEnv.target;
-    riseTime => freqEnv.duration;
-    riseTime => now;
-
-    endFreq => freqEnv.target;
-    dropTime => freqEnv.duration;
-    dropTime => now;
+function float snapToScale(float num) {
+  Std.ftom(num) => float midi;
+  1000 => float nearestDistance;
+  100 => float nearestNeighborMidi;
+  for (0 => int i; i < aMinorPentatonic.cap(); i++) {
+    aMinorPentatonic[i] => float note;
+    Std.fabs(note - midi) => float distance;
+    if (distance < nearestDistance) {
+      distance => nearestDistance;
+      note => nearestNeighborMidi;
+    }
+  }
+  return Std.mtof(nearestNeighborMidi);
 }
 
-SinOsc sin => dac;
 130 => int bpm;
 60.0 / bpm => float step;
 
-fun void updateFromVars() {
+Dyno output => PRCRev rev => Gain gain => Pan2 panEnv => dac;
+.75 => gain.gain;
+.15 => rev.mix;
+output.limit();
+output.compress();
+output.gate();
+output.duck();
+
+// Pseudo 808 kick synthesis
+// Freq determined by max lightness
+// Drop time determined by median saturation
+SinOsc kickOsc => ADSR kickOscEnv => output;
+Noise noise => BPF noiseFilter => ADSR noiseEnv => output;
+Envelope kickFreqEnv => blackhole;
+400 => noiseFilter.freq;
+15 => noiseFilter.Q;
+kickOscEnv.set(1::ms, 400::ms, 0.0, 0::ms);
+noiseEnv.set(1::ms, 50::ms, 0.0, 0::ms);
+
+function void kick() {
+  snapToScale((maxLightness / 3) + 55) => float startFreq;
+  57 => float endFreq;
+  1::ms => dur riseTime;
+  (medianSaturation / 3)::ms => dur dropTime;
+
+  kickOscEnv.keyOn();
+  noiseEnv.keyOn();
+
+  Math.random2(350, 450) => noiseFilter.freq;
+  Math.random2(10, 15) => noiseFilter.Q;
+
+  startFreq => kickFreqEnv.target;
+  riseTime => kickFreqEnv.duration;
+  riseTime => now;
+
+  endFreq => kickFreqEnv.target;
+  dropTime => kickFreqEnv.duration;
+  dropTime => now;
+}
+
+fun void playKick() {
   while (true) {
-    Std.mtof(medianSaturation / 3) => float freq;
-    sin.freq(freq);
+    spork ~kick();
+    step::second => now;
+  }
+}
+
+function void processKickEnvelope() {
+  while (true) {
+    kickFreqEnv.value() => kickOsc.freq;
+    1::samp => now;
+  }
+}
+
+spork ~playKick();
+spork ~processKickEnvelope();
+
+// Pulse osc
+// Based on mean red
+PulseOsc pulse => output;
+.08 => pulse.gain;
+Step unity => Envelope pulseFreqEnv => blackhole;
+unity => Envelope pulseWidthEnv => blackhole;
+pulseFreqEnv.duration((step/4)::second);
+pulseWidthEnv.duration((step/8)::second);
+
+fun void playPulse() {
+  while (true) {
+    snapToScale(medianRed / 3) => pulseFreqEnv.target;
+    (.9 - sweep/4) => pulseWidthEnv.target;
     (step/2)::second => now;
   }
 }
 
-
-fun void playKick() {
-    while (true) {
-        spork ~kick();
-        step::second => now;
-    }
+fun void processPulseEnvelope() {
+  while (true) {
+    pulseWidthEnv.last() => pulse.width;
+    pulseFreqEnv.last() => pulse.freq;
+    1::samp => now;
+  }
 }
-function void processEnvelopes() {
-    while (true) {
-        freqEnv.value() => osc.freq;
-        1::samp => now;
-    }
+spork ~playPulse();
+spork ~processPulseEnvelope();
+
+Rhodey rhodey => output;
+.3 => rhodey.gain;
+Step unity2 => Envelope rhodeyFreqEnv => blackhole;
+rhodeyFreqEnv.duration((step/3)::second);
+
+fun void playRhodey() {
+  while (true) {
+    rhodey.noteOn(medianBlue / 255);
+    snapToScale(medianBlue) => rhodeyFreqEnv.target;
+    (step/2)::second => now;
+  }
 }
 
-spork ~ processEnvelopes();
+fun void processRhodeyEnvelope() {
+  while (true) {
+    rhodeyFreqEnv.last() => rhodey.freq;
+    1::samp => now;
+  }
+}
+spork ~playRhodey();
+spork ~processRhodeyEnvelope();
 
-spork ~updateFromVars();
-spork ~playKick();
+Shakers shakers => output;
+.5 => shakers.gain;
+
+fun void playShakers() {
+  while (true) {
+    11 => shakers.preset;
+    snapToScale(medianGreen) => shakers.freq;
+    shakers.noteOn(1);
+    (step/4)::second => now;
+    shakers.noteOff(1);
+  }
+}
+
+spork ~playShakers();
+
+fun void pan() {
+  while (true) {
+    sweep => panEnv.pan;
+    1::samp => now;
+  }
+}
+
+spork ~pan();
 
 1::week => now;
 `
