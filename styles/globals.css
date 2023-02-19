@@ -37,4 +37,5 @@ a {
 .scanning-bar {
   box-shadow: 0 0 40px 20px rgb(255, 255, 255, .8);
   clip-path: inset(0 0 0 -60px);
+  transition: clip-path .1s;
 }

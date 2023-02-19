@@ -76,9 +76,9 @@ function setVars(cropped: ImageJS, chuck: Chuck) {
 
 enum ClipPath {
   Left = "inset(0 0 0 -60px)",
-  Right = "inset(0 0 0 60px)",
+  Right = "inset(0 -60px 0 0)",
   Top = "inset(-60px 0 0 0)",
-  Bottom = "inset(60px 0 0 0)",
+  Bottom = "inset(0 0 -60px 0)",
 }
 
 export default function ImageSonifier({
@@ -266,7 +266,7 @@ export default function ImageSonifier({
         <SpeakerWaveIcon className="h-5 w-5 stroke-2 mr-2" />
         image sonifier
       </h2>
-      <div className="grid grid-cols-[1fr_200px] w-full gap-x-4">
+      <div className="grid grid-cols-1fr gap-y-8 pb-8 md:grid-cols-[1fr_200px] md:pb-0 w-full gap-x-4">
         <div className="relative">
           {photo instanceof ArrayBuffer && img ? (
             <UserPhoto img={img} />
@@ -280,15 +280,15 @@ export default function ImageSonifier({
               height={400}
             />
           ) : null}
-          <div className="h-full w-full overflow-hidden rounded">
-            <button
-              type="button"
-              className="p-1 shadow absolute z-20 -top-3 -right-3 rounded-full bg-slate-800 text-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-2"
-              onClick={close}
-            >
-              <span className="sr-only">New Photo</span>
-              <XMarkIcon className="h-4 w-4 text-white" aria-hidden="true" />
-            </button>
+          <button
+            type="button"
+            className="p-1 shadow absolute z-20 -top-3 -right-3 rounded-full bg-slate-800 text-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-2"
+            onClick={close}
+          >
+            <span className="sr-only">New Photo</span>
+            <XMarkIcon className="h-4 w-4 text-white" aria-hidden="true" />
+          </button>
+          <div className="absolute top-0 h-full w-full overflow-hidden">
             <div
               ref={barRef}
               className="scanning-bar absolute bg-[rgb(255,255,255,.8)]"
@@ -302,6 +302,7 @@ export default function ImageSonifier({
             isDisabled={isRunning}
           />
           <DirectionDropdown
+            isDisabled={isRunning}
             value={direction}
             setValue={setDirection}
           />

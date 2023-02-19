@@ -41,9 +41,11 @@ const items = [
 ]
 
 export default function DirectionDropdown({
+  isDisabled = false,
   setValue,
   value,
 }: {
+  isDisabled: boolean,
   setValue: (dir: Direction) => void,
   value: string,
 }) {
@@ -55,7 +57,13 @@ export default function DirectionDropdown({
       className="relative inline-block text-left"
     >
       <div>
-        <Menu.Button className="inline-flex items-center w-full justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-100">
+        <Menu.Button
+          className={cx(
+            "inline-flex items-center w-full justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-100",
+            isDisabled ? "bg-slate-100" : "bg-white hover:bg-slate-50"
+          )}
+          disabled={isDisabled}
+        >
           {selected ? (
             <>
               <selected.icon className="h-4 w-4 mr-2" />
