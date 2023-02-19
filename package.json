@@ -22,7 +22,7 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "typescript": "4.9.3",
-    "webchuck": "^1.0.0"
+    "webchuck": "^1.1.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.13",
